@@ -3,6 +3,7 @@ package io.jks.stackcrud.service;
 import io.jks.stackcrud.converter.DtoEntityConverter;
 import io.jks.stackcrud.dto.PessoaDTO;
 import io.jks.stackcrud.event.PessoaProducer;
+import io.jks.stackcrud.exception.CEPInvalidoException;
 import io.jks.stackcrud.exception.DocumentoDuplicadoException;
 import io.jks.stackcrud.exception.NotFoundException;
 import io.jks.stackcrud.exception.ValorAlteraNaoConfereException;
@@ -34,6 +35,9 @@ class PessoaServiceTest {
 
     @Mock
     private PessoaProducer producer;
+
+    @Mock
+    private CepService cepService;
 
     @Test
     void buscarPessoaIDOK() {
@@ -115,6 +119,7 @@ class PessoaServiceTest {
 
     @Test
     void salvarPessoaOK() {
+        when(this.cepService.validaCEP(any())).thenReturn(Mono.just(true));
         when(this.repository.existsByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(false));
         when(this.converter.pessoaDtoToEntity(any())).thenReturn(Constants.getPessoaEntity());
         when(this.converter.pessoaEntityToDto(any())).thenReturn(Constants.getPessoaDTO());
@@ -146,6 +151,16 @@ class PessoaServiceTest {
     }
 
     @Test
+    void salvarPessoaERROCEP() {
+        when(this.cepService.validaCEP(any())).thenReturn(Mono.just(false));
+        when(this.repository.existsByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(false));
+        Mono<PessoaDTO> Pessoa = service.save(Constants.getPessoaDTO());
+        StepVerifier.create(Pessoa)
+                .expectError(CEPInvalidoException.class)
+                .verify();
+    }
+
+    @Test
     void salvarPessoaDocumentoDuplicado() {
         when(this.repository.existsByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(true));
         Mono<PessoaDTO> Pessoa = service.save(Constants.getPessoaDTO());
@@ -156,6 +171,7 @@ class PessoaServiceTest {
 
     @Test
     void udpatePessoaIDOK() {
+        when(this.cepService.validaCEP(any())).thenReturn(Mono.just(true));
         when(this.repository.findById(Constants.ID)).thenReturn(Mono.just(Constants.getPessoaEntity()));
         when(this.repository.findByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(Constants.getPessoaEntity()));
         when(this.converter.pessoaDtoToEntity(any())).thenReturn(Constants.getPessoaEntity());
@@ -188,6 +204,17 @@ class PessoaServiceTest {
     }
 
     @Test
+    void udpatePessoaIDCEP() {
+        when(this.cepService.validaCEP(any())).thenReturn(Mono.just(false));
+        when(this.repository.findById(Constants.ID)).thenReturn(Mono.just(Constants.getPessoaEntity()));
+        when(this.repository.findByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(Constants.getPessoaEntity()));
+        Mono<PessoaDTO> Pessoa = service.update(Constants.ID, Constants.getPessoaDTO());
+        StepVerifier.create(Pessoa)
+                .expectError(CEPInvalidoException.class)
+                .verify();
+    }
+
+    @Test
     void udpatePessoaIdNaoConfere() {
         Mono<PessoaDTO> Pessoa = service.update(Constants.ID + 9, Constants.getPessoaDTO());
         StepVerifier.create(Pessoa)
@@ -207,6 +234,7 @@ class PessoaServiceTest {
 
     @Test
     void udpatePessoaDocumentoOK() {
+        when(this.cepService.validaCEP(any())).thenReturn(Mono.just(true));
         when(this.repository.findByDocumento(Constants.DOCUMENTO)).thenReturn(Mono.just(Constants.getPessoaEntity()));
         when(this.converter.pessoaDtoToEntity(any())).thenReturn(Constants.getPessoaEntity());
         when(this.converter.pessoaEntityToDto(any())).thenReturn(Constants.getPessoaDTO());

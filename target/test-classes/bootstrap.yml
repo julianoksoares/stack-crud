@@ -14,3 +14,5 @@ spring:
   kafka:
     producer:
       bootstrap-servers: xxxxx:9092
+cep:
+  url: http://localhost:${wiremock.server.port}/

@@ -117,6 +117,17 @@ public class ExceptionsHandlers {
                 .map(ExceptionsHandlers::apply);
     }
 
+    @ExceptionHandler(CEPInvalidoException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Mono<ErrorInfo> cepInvalido(CEPInvalidoException ex) {
+        return Mono.just(ex)
+                .doOnRequest(e -> log.error(ExceptionUtils.getStackTrace(ex)))
+                .map(e -> ErrorInfo.builder()
+                        .codigo("0")
+                        .descricao(ex.getMessage()).build())
+                ;
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Mono<ErrorInfo> server(Exception ex) {

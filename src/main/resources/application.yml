@@ -19,3 +19,5 @@ spring:
   data:
     mongodb:
       uri: mongodb://docker-stack-crud:docker-stack-crud@localhost:27017/docker-stack-crud?authSource=docker-stack-crud
+cep:
+  url: https://ws.apicep.com/cep

@@ -4,6 +4,7 @@ import io.jks.stackcrud.converter.DtoEntityConverter;
 import io.jks.stackcrud.dto.PessoaDTO;
 import io.jks.stackcrud.entitypg.PessoaEntity;
 import io.jks.stackcrud.event.PessoaProducer;
+import io.jks.stackcrud.exception.CEPInvalidoException;
 import io.jks.stackcrud.exception.DocumentoDuplicadoException;
 import io.jks.stackcrud.exception.NotFoundException;
 import io.jks.stackcrud.exception.ValorAlteraNaoConfereException;
@@ -20,14 +21,16 @@ import reactor.core.publisher.Mono;
 public class PessoaService {
     private final PessoaRepository repository;
     private final DtoEntityConverter converter;
-    private final PessoaProducer cidadeProducer;
+    private final PessoaProducer pessoaProducer;
+    private final CepService cepService;
+
 
     public Mono<PessoaDTO> get(final Long id) {
         return Mono.just(id)
                 .flatMap(this.repository::findById)
                 .switchIfEmpty(Mono.error(new NotFoundException("Pessoa não encontrada para o id " + id)))
                 .map(converter::pessoaEntityToDto)
-                .doOnSuccess(c -> cidadeProducer.send("get", c))
+                .doOnSuccess(c -> pessoaProducer.send("get", c))
                 .doOnError(ex -> log.error(ex.getMessage()));
 
     }
@@ -37,19 +40,44 @@ public class PessoaService {
                 .flatMap(this.repository::findByDocumento)
                 .map(converter::pessoaEntityToDto)
                 .switchIfEmpty(Mono.error(new NotFoundException("Pessoa não encontrada para o documento " + documento)))
-                .doOnSuccess(c -> cidadeProducer.send("getByDocumento", c))
+                .doOnSuccess(c -> pessoaProducer.send("getByDocumento", c))
                 .doOnError(ex -> log.error(ex.getMessage()));
 
     }
 
+    private Mono<PessoaDTO> validaCEP(final PessoaDTO pessoa) {
+        return Mono.just(pessoa)
+                .map(PessoaDTO::getCep)
+                .flatMap(this.cepService::validaCEP)
+                .map(c -> {
+                    if (Boolean.FALSE.equals(c)){
+                        throw new CEPInvalidoException("Cep informado é invalido " + pessoa.getCep());
+                    }
+                    return pessoa;
+                }).thenReturn(pessoa);
+    }
+
+    private Mono<PessoaDTO> validaExisteDocumento(final PessoaDTO pessoa) {
+        return Mono.just(pessoa)
+                .map(PessoaDTO::getDocumento)
+                .flatMap(this.repository::existsByDocumento)
+                .map(c -> {
+                    if (Boolean.TRUE.equals(c)){
+                        throw new DocumentoDuplicadoException("Já existe uma pessoa com o documento " + pessoa.getDocumento());
+                    }
+                    return pessoa;
+                }).thenReturn(pessoa);
+    }
+
+
     public Mono<PessoaDTO> save(final PessoaDTO pessoa) {
-        return this.repository.existsByDocumento(pessoa.getDocumento())
-                .filter(exist -> !exist)
-                .switchIfEmpty(Mono.error(new DocumentoDuplicadoException("Já existe uma pessoa com o documento " + pessoa.getDocumento())))
+        return Mono.just(pessoa)
+                .flatMap(this::validaExisteDocumento)
+                .flatMap(this::validaCEP)
                 .map(f-> converter.pessoaDtoToEntity(pessoa))
                 .flatMap(this.repository::save)
                 .map(converter::pessoaEntityToDto)
-                .doOnSuccess(c -> cidadeProducer.send("save", c));
+                .doOnSuccess(c -> pessoaProducer.send("save", c));
     }
 
     private Mono<PessoaDTO> validaPessoaUpdateID(final Long id, final PessoaDTO pessoa) {
@@ -67,30 +95,31 @@ public class PessoaService {
         return Mono.just(pessoa)
                 .map(PessoaDTO::getId)
                 .flatMap(this.repository::findById)
-                .switchIfEmpty(Mono.error(new NotFoundException("Cidade a ser alterada não encontrada")))
+                .switchIfEmpty(Mono.error(new NotFoundException("Pessoa a ser alterada não encontrada")))
                 .map(c -> pessoa);
     }
 
-    private Mono<PessoaDTO> validaCidadeMesmoDocumento(final PessoaDTO cidade) {
-        return Mono.just(cidade)
+    private Mono<PessoaDTO> validaPessoaMesmoDocumento(final PessoaDTO pessoa) {
+        return Mono.just(pessoa)
                 .map(PessoaDTO::getDocumento)
                 .flatMap(this.repository::findByDocumento)
                 .map(c -> {
-                    if (!c.getId().equals(cidade.getId())){
+                    if (!c.getId().equals(pessoa.getId())){
                         throw new DocumentoDuplicadoException("Código da pessoa a ser alterado já existe com o id: " + c.getId());
                     }
-                    return cidade;
-                }).thenReturn(cidade);
+                    return pessoa;
+                }).thenReturn(pessoa);
     }
 
     public Mono<PessoaDTO> update(final Long id, final PessoaDTO pessoa) {
         return validaPessoaUpdateID(id, pessoa)
                 .flatMap(this::validaPessoaExiste)
-                .flatMap(this::validaCidadeMesmoDocumento)
+                .flatMap(this::validaPessoaMesmoDocumento)
+                .flatMap(this::validaCEP)
                 .map(converter::pessoaDtoToEntity)
                 .flatMap(repository::save)
                 .map(converter::pessoaEntityToDto)
-                .doOnSuccess(c -> cidadeProducer.send("update", c));
+                .doOnSuccess(c -> pessoaProducer.send("update", c));
     }
 
 
@@ -121,10 +150,11 @@ public class PessoaService {
     public Mono<PessoaDTO> updateByDocumento(final String documento, final PessoaDTO pessoa) {
         return validaPessoaUpdateCode(documento, pessoa)
                 .flatMap(this::validaPessoaExisteDocumento)
+                .flatMap(this::validaCEP)
                 .map(converter::pessoaDtoToEntity)
                 .flatMap(repository::save)
                 .map(converter::pessoaEntityToDto)
-                .doOnSuccess(c -> cidadeProducer.send("updateByDocumento", c));
+                .doOnSuccess(c -> pessoaProducer.send("updateByDocumento", c));
     }
 
     public Mono<Void> delete(final Long id) {
@@ -133,7 +163,7 @@ public class PessoaService {
                 .switchIfEmpty(Mono.error(new NotFoundException("Pessoa a ser excluída não encontrada")))
                 .map(PessoaEntity::getId)
                 .flatMap(this.repository::deleteById)
-                .doOnSuccess(c -> cidadeProducer.send("delete", id));
+                .doOnSuccess(c -> pessoaProducer.send("delete", id));
     }
 
     public Mono<Void> deleteByDocumento(final String documento) {
@@ -142,17 +172,17 @@ public class PessoaService {
                 .switchIfEmpty(Mono.error(new NotFoundException("Documento a ser excluída não encontrada")))
                 .map(PessoaEntity::getDocumento)
                 .flatMap(this.repository::deleteByDocumento)
-                .doOnSuccess(c -> cidadeProducer.send("deleteByDocumento", documento));
+                .doOnSuccess(c -> pessoaProducer.send("deleteByDocumento", documento));
     }
 
     public Mono<Boolean> existe(final Long id) {
         return this.repository.existsById(id)
-                .doOnSuccess(c -> cidadeProducer.send("existe", id));
+                .doOnSuccess(c -> pessoaProducer.send("existe", id));
     }
 
     public Mono<Boolean> existeByDocumento(final String documento) {
         return this.repository.existsByDocumento(documento)
-                .doOnSuccess(c -> cidadeProducer.send("existeByDocumento", documento));
+                .doOnSuccess(c -> pessoaProducer.send("existeByDocumento", documento));
     }
 
     public Flux<PessoaDTO> all() {

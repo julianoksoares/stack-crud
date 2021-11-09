@@ -37,3 +37,5 @@ opentracing:
   jaeger:
     http-sender:
       url: http://jaeger:14268/api/traces
+cep:
+  url: https://ws.apicep.com/cep
