@@ -5,4 +5,6 @@ io\jks\stackcrud\util\Constants.class
 io\jks\stackcrud\converter\DtoEntityConverterTest.class
 io\jks\stackcrud\service\TraceServiceTest.class
 io\jks\stackcrud\converter\ToJsonConverterTest.class
+io\jks\stackcrud\service\CepServiceTest.class
 io\jks\stackcrud\controller\PessoaControllerTest.class
+io\jks\stackcrud\client\CepClientTest.class

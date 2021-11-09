@@ -3,5 +3,7 @@ C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\util\Constants.java
 C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\converter\DtoEntityConverterTest.java
 C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\controller\PessoaControllerTest.java
 C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\converter\ToJsonConverterTest.java
+C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\client\CepClientTest.java
+C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\service\CepServiceTest.java
 C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\service\PessoaServiceTest.java
 C:\jksme\git\stack-crud\src\test\java\io\jks\stackcrud\service\TraceServiceTest.java
