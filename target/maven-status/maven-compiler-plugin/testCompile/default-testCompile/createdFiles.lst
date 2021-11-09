@@ -1,0 +1,8 @@
+io\jks\stackcrud\exception\ExceptionHandlerTest.class
+io\jks\stackcrud\converter\ToJsonConverterTest$1.class
+io\jks\stackcrud\service\PessoaServiceTest.class
+io\jks\stackcrud\util\Constants.class
+io\jks\stackcrud\converter\DtoEntityConverterTest.class
+io\jks\stackcrud\service\TraceServiceTest.class
+io\jks\stackcrud\converter\ToJsonConverterTest.class
+io\jks\stackcrud\controller\PessoaControllerTest.class

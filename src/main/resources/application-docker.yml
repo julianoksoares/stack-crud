@@ -1,0 +1,39 @@
+logging:
+  lever:
+    ROOT: DEBUG
+    org.springframework: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.core.ReactiveMongoTemplate: DEBUG
+    org.apache.http: DEBUG
+    org.springframework.web: DEBUG
+    io.jks: DEBUG
+    reactor.netty.http.client.HttpClient: DEBUG
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/stack-crud
+    username: postgres
+    password: postgres
+  flyway:
+    enable: true
+    url: jdbc:postgresql://postgres:5432/stack-crud
+    user: ${spring.r2dbc.username}
+    password: ${spring.r2dbc.password}
+    out-of-order: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  data:
+    mongodb:
+      uri: mongodb://docker-stack-crud:docker-stack-crud@docker-db-mongo:27017/docker-stack-crud?authSource=docker-stack-crud
+  kafka:
+    producer:
+      bootstrap-servers: kafka:29092
+    consumer:
+      bootstrap-servers: kafka:29092
+server:
+  port: 8801
+
+opentracing:
+  jaeger:
+    http-sender:
+      url: http://jaeger:14268/api/traces

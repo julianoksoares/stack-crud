@@ -1,0 +1,10 @@
+application:
+  changeme:
+    greetings:
+      prefix: Greetings
+  main:
+    banner-mode: "off"
+spring:
+  application:
+    group: juliano
+    name: stack-crud

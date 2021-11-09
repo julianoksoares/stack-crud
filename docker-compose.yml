@@ -1,0 +1,213 @@
+version: '3'
+services:
+  #Balancer da API. Utilizado para "simular" uma solução de API Gateway ou de um simples balancer
+  #A Api deverá ser chamada na porta 9090
+  lb:
+    container_name: 'lb'
+    build:
+      dockerfile: ngnix/Dockerfile
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api_1
+      - api_2
+      - api_3
+      - api_4
+    networks:
+      - netapp
+
+  #Banco de dados utilizado para salvar dados de negócio
+  postgres:
+    image: postgres:13.1
+    container_name: 'postgres'
+    build:
+      context: ./pg/
+    ports:
+      - "15432:5432"  # banco é exposto na porta 15532
+    volumes:
+      - ./docker/postgres:/var/lib/postgresql/data
+    networks:
+      - netapp
+    restart: always
+
+#Estrutura de mensageria
+  zookeeper:
+    container_name: 'zookeeper'
+    image: confluentinc/cp-zookeeper:latest
+    networks:
+      - netapp
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - ./docker/kafka/zookeeper:/var/lib/zookeeper/data
+
+  kafka:
+    container_name: 'kafka'
+    image: confluentinc/cp-kafka:latest
+    networks:
+      - netapp
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    volumes:
+      - ./docker/kafka/data:/var/lib/kafka/data
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    command: sh -c "((sleep 15 && kafka-topics --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic event-cidade)&) && /etc/confluent/docker/run ">
+#Visualizacao das mensagens
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: 'kafdrop'
+    networks:
+      - netapp
+    depends_on:
+      - kafka
+    ports:
+      - 19000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+
+#Banco de dados para trace de dados
+  docker-db-mongo:
+    image: 'mongo'
+    container_name: 'docker-db-mongo'
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=docker-stack-crud
+      - MONGO_INITDB_ROOT_PASSWORD=docker-stack-crud
+      - MONGO_INITDB_DATABASE=docker-stack
+    volumes:
+      - ./docker/mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./docker/mongo/volume:/data/db
+      - ./docker/mongo/configdb:/data/configdb
+    ports:
+      - '27017:27017'
+    networks:
+      - netapp
+
+#Instrumentação com opentrace - jaeger
+  jaeger:
+    image: "jaegertracing/all-in-one:latest"
+    container_name: 'jaeger'
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
+    networks:
+      - netapp
+
+#Serão inicializadas 4 instâncias da aplicação, simulando o cenário de escalonar o ambiente
+  api_1:
+    build:
+      context: ./app
+    volumes:
+      - ./docker/app/logs1:/usr/src/logs
+    ports:
+      - "8901:8801"
+    container_name: 'api_1'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    links:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - jaeger
+    depends_on:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - zookeeper
+      - jaeger
+    networks:
+      - netapp
+  api_2:
+    build:
+      context: ./app
+    volumes:
+      - ./docker/app/logs2:/usr/src/logs
+    ports:
+      - "8902:8801"
+    container_name: 'api_2'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    links:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - jaeger
+    depends_on:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - zookeeper
+      - jaeger
+    networks:
+      - netapp
+
+  api_3:
+    build:
+      context: ./app
+    volumes:
+      - ./docker/app/logs3:/usr/src/logs
+    ports:
+      - "8903:8801"
+    container_name: 'api_3'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    links:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - jaeger
+    depends_on:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - zookeeper
+      - jaeger
+    networks:
+      - netapp
+  api_4:
+    build:
+      context: ./app
+    volumes:
+      - ./docker/app/logs4:/usr/src/logs
+    ports:
+      - "8904:8801"
+    container_name: 'api_4'
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    links:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - jaeger
+    depends_on:
+      - postgres
+      - docker-db-mongo
+      - kafka
+      - zookeeper
+      - jaeger
+    networks:
+      - netapp
+networks:
+  netapp:
+    driver: bridge
