@@ -1,0 +1,18 @@
+application:
+  changeme:
+    greetings:
+      prefix: Greetings
+spring:
+  main:
+    banner-mode: "off"
+  application:
+    group: manager
+    name: app-manager-access-api
+  data:
+    mongodb:
+      auto-index-creation: true
+  kafka:
+    producer:
+      bootstrap-servers: xxxxx:9092
+cep:
+  url: http://localhost:${wiremock.server.port}/
