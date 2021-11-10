@@ -15,6 +15,7 @@ services:
       - api_4
     networks:
       - netapp
+    restart: always
 
   #Banco de dados utilizado para salvar dados de negócio
   postgres:
@@ -41,7 +42,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
       - ./docker/kafka/zookeeper:/var/lib/zookeeper/data
-
+    restart: always
   kafka:
     container_name: 'kafka'
     image: confluentinc/cp-kafka:latest
@@ -53,6 +54,7 @@ services:
       - 9092:9092
     volumes:
       - ./docker/kafka/data:/var/lib/kafka/data
+    restart: always
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -73,6 +75,7 @@ services:
       - 19000:9000
     environment:
       KAFKA_BROKERCONNECT: kafka:29092
+    restart: always
 
 #Banco de dados para trace de dados
   docker-db-mongo:
@@ -90,6 +93,7 @@ services:
       - '27017:27017'
     networks:
       - netapp
+    restart: always
 
 #Instrumentação com opentrace - jaeger
   jaeger:
@@ -105,6 +109,7 @@ services:
       - "9411:9411"
     networks:
       - netapp
+    restart: always
 
 #Serão inicializadas 4 instâncias da aplicação, simulando o cenário de escalonar o ambiente
   api_1:
@@ -132,6 +137,7 @@ services:
       - jaeger
     networks:
       - netapp
+    restart: always
   api_2:
     build:
       context: ./app
@@ -157,7 +163,7 @@ services:
       - jaeger
     networks:
       - netapp
-
+    restart: always
   api_3:
     build:
       context: ./app
@@ -183,6 +189,7 @@ services:
       - jaeger
     networks:
       - netapp
+    restart: always
   api_4:
     build:
       context: ./app
@@ -208,6 +215,7 @@ services:
       - jaeger
     networks:
       - netapp
+    restart: always
 networks:
   netapp:
     driver: bridge
